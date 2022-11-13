@@ -22,7 +22,6 @@ import PIL.Image
 import numpy as np
 import pandas as pd
 from scipy.stats import multivariate_normal
-from mindspore import ops
 
 
 class Inshop:
@@ -138,8 +137,7 @@ class Inshop:
         pose = self.get_pose()
         if self._xflip[idx]:
             image = image[:, :, ::-1]
-            flip = ops.ReverseV2(axis=[2])
-            pose = flip(pose)
+            pose = np.flip(pose, axis=2)
         return image.copy(), self.get_label(idx), pose
 
     def get_all(self, ii):
@@ -166,8 +164,7 @@ class Inshop:
 
             if self._xflip[idx]:
                 image = image[:, :, ::-1]
-                flip = ops.ReverseV2(axis=[2])
-                pose = flip(pose)
+                pose = np.flip(pose, axis=2)
             images.append(image.copy())
             idxs.append(self.get_label(idx))
             poses.append(pose)

@@ -1,4 +1,4 @@
-﻿# Copyright 2022 Huawei Technologies Co., Ltd
+# Copyright 2022 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ import numpy as np
 from mindspore import nn, ops, Tensor, Parameter
 import mindspore as ms
 
-from utils.ops import conv2d_resample, upfirdn2d, bias_act
+from vogue_utils import conv2d_resample, upfirdn2d, bias_act
 from models.pose_encoder import PoseEncoder
 from models.vogue_block import FullyConnectedLayer, MappingNetwork, resample_filter
 
@@ -161,7 +161,6 @@ class SynthesisLayer(nn.Cell):
                     * self.noise_strength
         if self.use_noise and noise_mode == 0:
             noise = self.noise_const * self.noise_strength
-        noise = noise.astype(x.dtype)
 
         flip_weight = (self.up == 1)
         x = modulated_conv2d(x=x, weight=self.weight, styles=styles, noise=noise, up=self.up, padding=self.padding,
@@ -475,18 +474,18 @@ class SynthesisBlock(nn.Cell):
             x = x.astype(d_type)
 
         if self.in_channels == 0:
-            x = self.conv1(x, next(w_iter)[0].astype(d_type), fused_modconv=fused_modconv, noise_mode=noise_mode,
+            x = self.conv1(x, next(w_iter).astype(d_type), fused_modconv=fused_modconv, noise_mode=noise_mode,
                            all_info=self.all_info)
         else:
-            x = self.conv0(x, next(w_iter)[0].astype(d_type), fused_modconv=fused_modconv, noise_mode=noise_mode,
+            x = self.conv0(x, next(w_iter).astype(d_type), fused_modconv=fused_modconv, noise_mode=noise_mode,
                            all_info=self.all_info)
-            x = self.conv1(x, next(w_iter)[0].astype(d_type), fused_modconv=fused_modconv, noise_mode=noise_mode,
+            x = self.conv1(x, next(w_iter).astype(d_type), fused_modconv=fused_modconv, noise_mode=noise_mode,
                            all_info=self.all_info)
 
         if img is not None:
             img = upfirdn2d.upsample2d(img, resample_filter, all_info=self.all_info)
         if self.is_last or self.architecture == 'skip':
-            y = self.torgb(x, next(w_iter)[0], fused_modconv=fused_modconv, all_info=self.all_info)
+            y = self.torgb(x, next(w_iter), fused_modconv=fused_modconv, all_info=self.all_info)
             y = y.astype(ms.float32)
             img = img + y if img is not None else y
 
@@ -697,12 +696,12 @@ class SynthesisBlockNoPose(nn.Cell):
             x = x.astype(d_type)
 
         if self.in_channels == 0:
-            x = self.conv1(x, next(w_iter).astype(d_type), fused_modconv=fused_modconv, noise_mode=noise_mode,
+            x = self.conv1(x, next(w_iter), fused_modconv=fused_modconv, noise_mode=noise_mode,
                            all_info=self.all_info)
         else:
-            x = self.conv0(x, next(w_iter).astype(d_type), fused_modconv=fused_modconv, noise_mode=noise_mode,
+            x = self.conv0(x, next(w_iter), fused_modconv=fused_modconv, noise_mode=noise_mode,
                            all_info=self.all_info)
-            x = self.conv1(x, next(w_iter).astype(d_type), fused_modconv=fused_modconv, noise_mode=noise_mode,
+            x = self.conv1(x, next(w_iter), fused_modconv=fused_modconv, noise_mode=noise_mode,
                            all_info=self.all_info)
 
         if img is not None:

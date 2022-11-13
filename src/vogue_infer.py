@@ -27,6 +27,8 @@ from scipy.stats import multivariate_normal
 
 from models.vogue_generator import Generator
 
+os.environ['GLOG_v'] = '3'
+
 
 def num_range(s):
     """
@@ -136,6 +138,8 @@ def generate_style_mix(args_infer):
     Examples:
         >>> generate_style_mix(args)
     """
+    ms.set_context(mode=ms.PYNATIVE_MODE)
+    ms.set_context(device_id=args_infer.device)
     ckpt = args_infer.ckpt
     rows = args_infer.rows
     cols = args_infer.cols
@@ -148,7 +152,7 @@ def generate_style_mix(args_infer):
     print('Loading networks from "%s"...' % ckpt)
     whole_seeds = list(set(rows + cols))
     generator = Generator(z_dim=512, w_dim=512, c_dim=0, img_resolution=256, img_channels=3,
-                          batch_size=len(whole_seeds), mapping_kwargs={'num_layers': 2},
+                          batch_size=1, mapping_kwargs={'num_layers': 2},
                           synthesis_kwargs={'channel_base': 16384,
                                             'channel_max': 512,
                                             'num_fp16_res': 4,
@@ -179,22 +183,14 @@ def generate_style_mix(args_infer):
         poses.append(pose)
     poses = Tensor(np.array(poses), ms.float32)
 
+    image_dict = dict()
     print('Generating images...')
-    whole_images = generator.synthesis.construct(whole_w, pose=poses, noise_mode=noise_mode)
-    ops.clip_by_value(whole_images.transpose(0, 2, 3, 1) * 127.5 + 128, clip_min, clip_max).astype(ms.uint8)
-    whole_images = ops.clip_by_value(whole_images.transpose(0, 2, 3, 1) * 127.5 + 128,
-                                     clip_min, clip_max).astype(ms.uint8).asnumpy()
-    image_dict = {(seed, seed): image for seed, image in zip(whole_seeds, list(whole_images))}
+    for i in range(whole_w.shape[0]):
+        image = generator.synthesis.construct(whole_w[i][np.newaxis], pose=poses[i][np.newaxis], noise_mode=noise_mode)
+        image = ops.clip_by_value(image.transpose(0, 2, 3, 1) * 127.5 + 128, clip_min, clip_max).astype(ms.uint8)
+        image_dict[(whole_seeds[i], whole_seeds[i])] = image.asnumpy()[0]
 
     print('Generating style-mixed images...')
-    generator = Generator(z_dim=512, w_dim=512, c_dim=0, img_resolution=256, img_channels=3,
-                          batch_size=1, mapping_kwargs={'num_layers': 2},
-                          synthesis_kwargs={'channel_base': 16384,
-                                            'channel_max': 512,
-                                            'num_fp16_res': 4,
-                                            'conv_clamp': 256})
-    param_dict = load_checkpoint(ckpt)
-    load_param_into_net(generator, param_dict)
     for row_seed in rows:
         for col_seed in cols:
             w = w_dict[row_seed].copy()
@@ -246,6 +242,7 @@ def parse_args():
     args.add_argument('--pose-name', default='./pose-annotations.csv', help='pose-file',
                       metavar='FILE')
     args.add_argument('--data-path', default='../dataset/inshopclothes/train/', help='data-path')
+    args.add_argument('--device', type=int, default=0, help='device_id')
     args = args.parse_args()
     return args
 

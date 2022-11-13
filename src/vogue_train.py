@@ -17,7 +17,6 @@
 import argparse
 import copy
 import os
-import re
 import time
 
 import numpy as np
@@ -30,6 +29,8 @@ from models.vogue_generator import Generator
 from models.vogue_discriminator import Discriminator
 from process_datasets.inshop import Inshop
 from losses.vogue_loss import CustomWithLossCell, StyleGANLoss
+
+os.environ['GLOG_v'] = '3'
 
 
 def setup_snapshot_image_grid(dataset, seed=0):
@@ -181,6 +182,8 @@ def train(args):
     Examples:
         >>> train(args)
     """
+    ms.set_context(mode=ms.PYNATIVE_MODE)
+    ms.set_context(device_id=args.device)
     out_dir = args.outdir
     snap = args.snap
     random_seed = args.seed
@@ -189,7 +192,6 @@ def train(args):
     mirror = args.mirror
     total_kimg = args.total_kimg
     batch_size = args.batch_size
-    resume_pkl = args.resume_pkl
     model_path = args.model_path
 
     np.random.seed(random_seed)
@@ -199,12 +201,9 @@ def train(args):
     network_snapshot_ticks = snap
     cur_tick = 0
     batch_idx = 0
-    cur_nimg = 0
     kimg_per_tick = 4
     tick_start_nimg = 2404000
-    match = re.match(r'^.*(network-snapshot-)(\d+)(.pkl)$', resume_pkl, re.IGNORECASE)
-    if match:
-        cur_nimg = int(match.group(2)) * 1000
+    cur_nimg = 2404000
     abort_fn = None
     all_done = False
 
@@ -379,19 +378,18 @@ def parse_args():
     parser = argparse.ArgumentParser(description='train')
     parser.add_argument('--outdir', help='where to save the results', type=str, default='./out/', metavar='DIR')
     parser.add_argument('--gpus', help='number of GPUs to use', type=int, default=1, metavar='INT')
-    parser.add_argument('--snap', help='snapshot interval', type=int, default=10, metavar='INT')
+    parser.add_argument('--snap', help='snapshot interval', type=int, default=1, metavar='INT')
     parser.add_argument('--seed', help='random seed', type=int, default=0, metavar='INT')
     parser.add_argument('--data-dir', help='training data', type=str, default='../dataset/data.zip', metavar='PATH')
     parser.add_argument('--posefile', help='csv file of pose keypoints', type=str, default='./pose-annotations.csv')
     parser.add_argument('--mirror', help='enable dataset x-flips', type=bool, default=False, metavar='BOOL')
     parser.add_argument('--total-kimg', help='total training duration', type=int, default=25000, metavar='INT')
     parser.add_argument('--batch-size', help='total batch size', type=int, default=2, metavar='INT')
-    parser.add_argument('--resume-pkl', help='resume pkl', type=str,
-                        default='./ckpt/UC-scratch-network-snapshot-002404.pkl', metavar='INT')
     parser.add_argument('--need-convert', help='need to convert pkl to ms ckpt', type=bool,
                         default=False, metavar='BOOL')
     parser.add_argument('--model-path', help='path to save models', type=str,
                         default='./ckpt/', metavar='INT')
+    parser.add_argument('--device', type=int, default=0, help='device_id')
     args = parser.parse_args()
     return args
 

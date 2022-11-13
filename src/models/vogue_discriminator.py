@@ -1,4 +1,4 @@
-﻿# Copyright 2022 Huawei Technologies Co., Ltd
+# Copyright 2022 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ import numpy as np
 from mindspore import nn, ops, Tensor
 import mindspore as ms
 
-from utils.ops import upfirdn2d
+from vogue_utils import upfirdn2d
 from models.vogue_block import Conv2dLayer, FullyConnectedLayer, MappingNetwork, resample_filter
 
 

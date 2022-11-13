@@ -24,7 +24,9 @@ import mindspore as ms
 from mindspore import ops, Tensor, load_checkpoint, load_param_into_net
 
 from models.vogue_generator import GeneratorNoPose as Generator
-ms.set_context(mode=ms.PYNATIVE_MODE)
+
+os.environ['GLOG_v'] = '3'
+
 
 def num_range(s):
     """
@@ -58,6 +60,8 @@ def generate_style_mix_no_pose(args_infer):
     Examples:
         >>> generate_style_mix_no_pose(args)
     """
+    ms.set_context(mode=ms.PYNATIVE_MODE)
+    ms.set_context(device_id=args_infer.device)
     ckpt = args_infer.ckpt
     rows = args_infer.rows
     cols = args_infer.cols
@@ -68,7 +72,7 @@ def generate_style_mix_no_pose(args_infer):
     print('Loading no pose networks from "%s"...' % ckpt)
     whole_seeds = list(set(rows + cols))
     generator = Generator(z_dim=512, w_dim=512, c_dim=0, img_resolution=256, img_channels=3,
-                          batch_size=len(whole_seeds), mapping_kwargs={'num_layers': 2},
+                          batch_size=1, mapping_kwargs={'num_layers': 2},
                           synthesis_kwargs={'channel_base': 16384,
                                             'channel_max': 512,
                                             'num_fp16_res': 4,
@@ -87,23 +91,14 @@ def generate_style_mix_no_pose(args_infer):
     w_avg = generator.mapping.w_avg
     whole_w = w_avg + (whole_w - w_avg) * truncation_psi
     w_dict = {seed: w for seed, w in zip(whole_seeds, list(whole_w))}
-
+    image_dict = dict()
     print('Generating images...')
-    whole_images = generator.synthesis.construct(whole_w, noise_mode=noise_mode)
-    ops.clip_by_value(whole_images.transpose(0, 2, 3, 1) * 127.5 + 128, clip_min, clip_max).astype(ms.uint8)
-    whole_images = ops.clip_by_value(whole_images.transpose(0, 2, 3, 1) * 127.5 + 128,
-                                     clip_min, clip_max).astype(ms.uint8).asnumpy()
-    image_dict = {(seed, seed): image for seed, image in zip(whole_seeds, list(whole_images))}
+    for i in range(whole_w.shape[0]):
+        image = generator.synthesis.construct(whole_w[i][np.newaxis], noise_mode=noise_mode)
+        image = ops.clip_by_value(image.transpose(0, 2, 3, 1) * 127.5 + 128, clip_min, clip_max).astype(ms.uint8)
+        image_dict[(whole_seeds[i], whole_seeds[i])] = image.asnumpy()[0]
 
     print('Generating style-mixed images...')
-    generator = Generator(z_dim=512, w_dim=512, c_dim=0, img_resolution=256, img_channels=3,
-                          batch_size=1, mapping_kwargs={'num_layers': 2},
-                          synthesis_kwargs={'channel_base': 16384,
-                                            'channel_max': 512,
-                                            'num_fp16_res': 4,
-                                            'conv_clamp': 256})
-    param_dict = load_checkpoint(ckpt)
-    load_param_into_net(generator, param_dict)
     for row_seed in rows:
         for col_seed in cols:
             w = w_dict[row_seed].copy()
@@ -150,6 +145,7 @@ def parse_args():
     args.add_argument('--noise-mode', help='Noise mode', choices=['const', 'random'],
                       default='const')
     args.add_argument('--out-dir', type=str, default='./out_mixing_no_pose')
+    args.add_argument('--device', type=int, default=0, help='device_id')
     args = args.parse_args()
     return args
 

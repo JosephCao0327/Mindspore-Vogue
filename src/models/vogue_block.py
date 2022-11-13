@@ -1,4 +1,4 @@
-﻿# Copyright 2022 Huawei Technologies Co., Ltd
+# Copyright 2022 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ import numpy as np
 from mindspore import nn, ops, Tensor, Parameter
 import mindspore as ms
 
-from utils.ops import conv2d_resample, bias_act
+from vogue_utils import conv2d_resample, bias_act
 
 
 # Captured from the checkpoint
@@ -84,10 +84,9 @@ class FullyConnectedLayer(nn.Cell):
 
     def construct(self, x):
         """Fully_connected_layer construct"""
-        w = self.weight.astype(x.dtype) * self.weight_gain
+        w = self.weight * self.weight_gain
         b = self.bias
         if b is not None:
-            b = b.astype(x.dtype)
             if self.bias_gain != 1:
                 b = b * self.bias_gain
 
@@ -156,9 +155,9 @@ class Conv2dLayer(nn.Cell):
     def construct(self, x, gain=1, all_info=None):
         """Conv2d construct"""
         w = self.weight * self.weight_gain
-        b = self.bias.astype(x.dtype) if self.bias is not None else None
+        b = self.bias if self.bias is not None else None
         flip_weight = (self.up == 1)
-        x = conv2d_resample.conv2d_resample(x=x, w=w.astype(x.dtype), f=resample_filter, up=self.up,
+        x = conv2d_resample.conv2d_resample(x=x, w=w, f=resample_filter, up=self.up,
                                             down=self.down, padding=self.padding, flip_weight=flip_weight,
                                             all_info=all_info)
         act_gain = self.act_gain * gain
@@ -238,9 +237,9 @@ class MappingNetwork(nn.Cell):
         concat = ops.Concat(axis=1)
         x = None
         if self.z_dim > 0:
-            x = normalize_2nd_moment(z.astype(ms.float32))
+            x = normalize_2nd_moment(z)
         if self.c_dim > 0:
-            y = normalize_2nd_moment(self.embed(c.astype(ms.float32)))
+            y = normalize_2nd_moment(self.embed(c))
             x = concat((x, y)) if x is not None else y
 
         for layer in self.blocks:
