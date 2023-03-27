@@ -65,7 +65,7 @@ Below is the introduction of the usage of VOGUE.
 
 ### Preparation
 
-At first, you should download the Inshop dataset from [Inshop](https://drive.google.com/file/d/1r_Pz2gk1Sp2sjYS7cj9oYUMbLGo9EyZS/view?usp=sharing) and save it in the `./dataset/` directory.
+At first, you should download the Inshop dataset from [Inshop](https://drive.google.com/file/d/10APtN2WUV7fCbKohGZ8iREz4TRpDj7kR/view?usp=share_link) and save it in the `./dataset/` directory.
 
 Second, you need to download the pose file [Pose keypoints](https://drive.google.com/file/d/1XryABeNxvzsdjEY7j4ed2m4G-we0n0md/view?usp=sharing) and save it in the `./src/` directory.
 
